@@ -1,0 +1,102 @@
+### PolicyFlow API Examples
+
+@baseUrl = http://127.0.0.1:8000/api
+
+### 1. Create a Policy Request (Sample from Assignment Spec)
+# Travel days = 5, Age = 28 (multiplier 1.00), PLUS ($20), INTERNATIONAL (1.80), 300k (1.25)
+# Expected Premium: 20 * 5 * 1.00 * 1.80 * 1.25 = ₹225.00
+POST {{baseUrl}}/policy-requests
+Content-Type: application/json
+Accept: application/json
+
+{
+  "client_request_id": "AGT-2026-0001",
+  "agent_id": "AGENT-17",
+  "customer_name": "Sample Customer",
+  "date_of_birth": "1998-04-10",
+  "destination": "INTERNATIONAL",
+  "trip_start": "2026-11-10",
+  "trip_end": "2026-11-14",
+  "plan_code": "PLUS",
+  "sum_insured": 300000
+}
+
+### 2. Idempotency Test (Submit Same Request Again)
+# Returns HTTP 200 with the existing record, no duplicate created
+POST {{baseUrl}}/policy-requests
+Content-Type: application/json
+Accept: application/json
+
+{
+  "client_request_id": "AGT-2026-0001",
+  "agent_id": "AGENT-17",
+  "customer_name": "Sample Customer",
+  "date_of_birth": "1998-04-10",
+  "destination": "INTERNATIONAL",
+  "trip_start": "2026-11-10",
+  "trip_end": "2026-11-14",
+  "plan_code": "PLUS",
+  "sum_insured": 300000
+}
+
+### 3. List Policy Requests (with status filter and pagination)
+GET {{baseUrl}}/policy-requests?status=VALIDATED&page=1
+Accept: application/json
+
+### 4. Retrieve a Specific Policy Request by ID
+GET {{baseUrl}}/policy-requests/1
+Accept: application/json
+
+### 5. Submit Policy Request to Mock Insurer (Standard Flow)
+POST {{baseUrl}}/policy-requests/1/submit
+Accept: application/json
+
+### 6. Reliability Scenario 1: Simulate Temporary Insurer Failure (503)
+POST {{baseUrl}}/policy-requests/1/submit
+Content-Type: application/json
+Accept: application/json
+
+{
+  "simulation": "temporary_failure"
+}
+
+### 7. Reliability Scenario 1 Retry: Re-submit after Temporary Failure
+POST {{baseUrl}}/policy-requests/1/submit
+Accept: application/json
+
+### 8. Reliability Scenario 2: Simulate Timeout during Submission (504)
+POST {{baseUrl}}/policy-requests/1/submit
+Content-Type: application/json
+Accept: application/json
+
+{
+  "simulation": "timeout"
+}
+
+### 9. Reliability Scenario 2 Reconciliation: Check Insurer Status & Reconcile
+POST {{baseUrl}}/policy-requests/1/reconcile
+Accept: application/json
+
+### 10. Webhook Callback from Mock Insurer (Confirm Policy Issuance)
+POST {{baseUrl}}/mock-insurer/callback
+Content-Type: application/json
+Accept: application/json
+
+{
+  "provider_reference": "INS-SAMPLE-REF",
+  "status": "ISSUED",
+  "policy_number": "POL-20261023-XYZ101",
+  "message": "Policy issued successfully"
+}
+
+### 11. Reliability Scenario 3: Duplicate Webhook Callback (Idempotent)
+POST {{baseUrl}}/mock-insurer/callback
+Content-Type: application/json
+Accept: application/json
+
+{
+  "provider_reference": "INS-SAMPLE-REF",
+  "status": "ISSUED",
+  "policy_number": "POL-20261023-XYZ101",
+  "message": "Policy issued successfully"
+}
